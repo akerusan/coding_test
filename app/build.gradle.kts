@@ -65,4 +65,7 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.2")
+    implementation("androidx.fragment:fragment-ktx:1.7.0")
 }
