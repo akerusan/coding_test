@@ -1,7 +1,7 @@
 package com.example.myapplication.di
 
 import com.example.myapplication.data.network.WithTestApi
-import com.example.myapplication.utils.Constants.Companion.BASE_URL
+import com.example.myapplication.utils.Constants.BASE_URL
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
