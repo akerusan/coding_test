@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.myapplication.ui
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -8,18 +8,22 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
+import com.example.myapplication.data.models.User
+import com.example.myapplication.data.useCase.GetUsersUseCase
 import com.example.myapplication.databinding.ActivityMainBinding
 import com.example.myapplication.databinding.ItemUserBinding
+import com.example.myapplication.utils.NetworkResult
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+    @Inject
+    lateinit var getUsersUseCase: GetUsersUseCase
 
     private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
 
@@ -28,30 +32,23 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val client = OkHttpClient()
-            val request = okhttp3.Request.Builder()
-                .url("https://raw.githubusercontent.com/withjp-inc/with_android_coding_test/main/api/users/users.json")
-                .build()
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw Exception("Unexpected code $response")
-
-                val body = response.body!!.string()
-                val users = Json.decodeFromString<List<User>>(body)
-
-                withContext(Dispatchers.Main) {
-                    binding.recyclerView.adapter = MyAdapter(users)
+            getUsersUseCase().let { result ->
+                when (result) {
+                    is NetworkResult.Success -> {
+                        withContext(Dispatchers.Main) {
+                            result.data?.let {
+                                binding.recyclerView.adapter = MyAdapter(it)
+                            }
+                        }
+                    }
+                    is NetworkResult.Error -> TODO()
+                    is NetworkResult.Empty -> TODO()
+                    is NetworkResult.Loading -> TODO()
                 }
             }
         }
     }
 }
-
-@Serializable
-data class User(
-    val id: Int,
-    val nickname: String,
-    val photo: String
-)
 
 class MyAdapter(
     val users: List<User>
