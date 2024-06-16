@@ -10,8 +10,11 @@ import com.example.myapplication.utils.NetworkResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,6 +31,10 @@ class UserListViewModel @Inject constructor(
         fetchUsers()
         getUsersFromDb()
     }
+
+    val uiState: StateFlow<UserListUiState> = usersFromDb.map { userAdapter ->
+        UserListUiState(userAdapter)
+    }.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = UserListUiState())
 
     /** LOCAL DB */
 
@@ -46,7 +53,7 @@ class UserListViewModel @Inject constructor(
 
     /** REMOTE */
 
-    fun fetchUsers() = viewModelScope.launch(Dispatchers.IO) {
+    private fun fetchUsers() = viewModelScope.launch(Dispatchers.IO) {
         _usersFromDb.value = UserAdapter.Loading
         getUsersUseCase().let { result ->
             when (result) {
@@ -62,6 +69,12 @@ class UserListViewModel @Inject constructor(
                     _usersFromDb.value = UserAdapter.Loading
                 }
             }
+        }
+    }
+
+    fun dispatch(action: UserListAction) {
+        when (action) {
+            is UserListAction.Retry -> fetchUsers()
         }
     }
 }
