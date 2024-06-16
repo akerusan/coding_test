@@ -2,48 +2,64 @@ package com.example.myapplication.ui.users
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.Repository
+import com.example.myapplication.data.database.entities.UserEntity
 import com.example.myapplication.data.useCase.GetUsersUseCase
 import com.example.myapplication.ui.users.vo.UserAdapter
 import com.example.myapplication.utils.NetworkResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
 class UserListViewModel @Inject constructor(
+    private val repository: Repository,
     private val getUsersUseCase: GetUsersUseCase
 ): ViewModel() {
 
-    private var _getUsers: MutableStateFlow<UserAdapter> = MutableStateFlow(UserAdapter.Initial)
-    var getUsers = _getUsers.asStateFlow()
+    private val _usersFromDb = MutableStateFlow<UserAdapter>(UserAdapter.Initial)
+    val usersFromDb: StateFlow<UserAdapter> = _usersFromDb.asStateFlow()
 
     init {
-        getUsers()
+        fetchUsers()
+        getUsersFromDb()
     }
 
-    private fun getUsers() = viewModelScope.launch {
-        getUsersSafeCall()
+    /** LOCAL DB */
+
+    private fun getUsersFromDb() = viewModelScope.launch {
+        repository.local.getUsers().collect { db ->
+            if (db.isNotEmpty()) {
+                _usersFromDb.value = UserAdapter.Success(db[0].user)
+            }
+        }
     }
 
-    private suspend fun getUsersSafeCall() {
+    private fun insertUsers(userEntity: UserEntity) =
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.local.insertUsers(userEntity)
+        }
+
+    /** REMOTE */
+
+    fun fetchUsers() = viewModelScope.launch(Dispatchers.IO) {
+        _usersFromDb.value = UserAdapter.Loading
         getUsersUseCase().let { result ->
             when (result) {
                 is NetworkResult.Success -> {
-                    withContext(Dispatchers.Main) {
-                        result.data?.let {
-                            _getUsers.value = UserAdapter.Success(it)
-                        }
+                    result.data?.let {
+                        insertUsers(UserEntity(it))
                     }
                 }
                 is NetworkResult.Error-> {
-                    _getUsers.value = UserAdapter.Error(message = result.message)
+                    _usersFromDb.value = UserAdapter.Error(message = result.message)
                 }
                 is NetworkResult.Loading -> {
-                    _getUsers.value = UserAdapter.Loading
+                    _usersFromDb.value = UserAdapter.Loading
                 }
             }
         }

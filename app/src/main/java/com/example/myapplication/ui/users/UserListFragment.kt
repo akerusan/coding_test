@@ -28,25 +28,42 @@ class UserListFragment : Fragment() {
         _binding =  FragmentUserListBinding.inflate(inflater, container, false)
 
         lifecycleScope.launch {
-            viewModel.getUsers.collectLatest {
-                when (it) {
+            viewModel.usersFromDb.collectLatest { db ->
+                when (db) {
                     UserAdapter.Initial,
                     UserAdapter.Loading -> {
-                        // Show loading
+                        binding.progress.visibility = View.VISIBLE
+                        binding.errorLayout.visibility = View.GONE
+                        binding.recyclerView.visibility = View.GONE
                     }
                     is UserAdapter.Success -> {
-                        val mAdapter = UserListAdapter(it.data)
+                        binding.progress.visibility = View.GONE
+                        binding.errorLayout.visibility = View.GONE
+                        binding.recyclerView.visibility = View.VISIBLE
+
+                        val mAdapter = UserListAdapter(db.users)
                         binding.recyclerView.apply {
                             adapter = mAdapter
                         }
                     }
                     is UserAdapter.Error -> {
-                        // Show Error
+                        binding.progress.visibility = View.GONE
+                        binding.errorLayout.visibility = View.VISIBLE
+                        binding.recyclerView.visibility = View.GONE
                     }
                 }
             }
         }
 
+        binding.retryBtn.setOnClickListener {
+            viewModel.fetchUsers()
+        }
+
         return binding.root
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        _binding = null
     }
 }
